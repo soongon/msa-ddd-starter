@@ -1,0 +1,17 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: order-service
+  datasource:
+    url: jdbc:h2:mem:orders;DB_CLOSE_DELAY=-1
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    open-in-view: false
+  kafka:
+    # 환경 변수 SPRING_KAFKA_BOOTSTRAP_SERVERS로 바꿀 수 있다. 설정은 이미지 밖에서 주입한다.
+    bootstrap-servers: localhost:9092

@@ -26,29 +26,100 @@ Gradle은 설치하지 않아도 된다. 저장소에 포함된 `gradlew`가 내
 git checkout step0-monolith
 ```
 
-## 실행
+## 실행 (step5)
+
+이 브랜치에는 서비스가 둘 있다.
+
+| 서비스 | 폴더 | 포트 | 역할 |
+|---|---|---|---|
+| 주문 서비스 | `order-service` | 8081 | 주문을 받고 `order-events` 토픽에 주문 접수 이벤트를 발행한다 |
+| 배송 서비스 | `delivery-service` | 8082 | 주문 접수 이벤트를 받아 배송을 준비한다 |
+
+step0~step4의 실행 방법은 해당 브랜치의 README를 본다.
+
+### 테스트
 
 ```bash
 ./gradlew test
 ```
 
-```bash
-./gradlew bootRun
-```
+### Docker Compose로 띄우기 (실습 6-1)
 
-step0~step4는 저장소 루트에서 위 명령을 그대로 쓴다. step5는 서비스가 둘이므로 그 브랜치의 README를 따른다.
-
-실행하면 회원 두 명이 미리 등록된다. 1번은 일반 회원, 2번은 VIP 회원이다.
+jar를 만든다.
 
 ```bash
-curl -i -X POST localhost:8080/orders -H 'Content-Type: application/json' -d '{"memberId":1,"items":[{"productId":1,"productName":"키보드","price":30000,"quantity":1}],"receiverName":"홍길동","zipCode":"06236","address1":"서울시 강남구","address2":"101호"}'
+./gradlew bootJar
+```
+
+Kafka와 두 서비스를 띄운다.
+
+```bash
+docker compose up --build -d
+```
+
+주문한다. 1번은 일반 회원, 2번은 VIP 회원이다.
+
+```bash
+curl -i -X POST localhost:8081/orders -H 'Content-Type: application/json' -d '{"memberId":1,"items":[{"productId":1,"productName":"키보드","price":30000,"quantity":1}],"receiverName":"홍길동","zipCode":"06236","address1":"서울시 강남구","address2":"101호"}'
+```
+
+배송 서비스가 이벤트를 받았는지 확인한다.
+
+```bash
+curl localhost:8082/deliveries
 ```
 
 ```bash
-curl localhost:8080/orders/1
+docker compose logs delivery-service | grep 배송
 ```
 
-step4부터는 주문 ID가 숫자가 아니라 UUID다. 주문 요청의 응답 헤더 `Location`에 나온 주소로 조회한다.
+### 장애 격리 확인하기
+
+배송 서비스를 내린다.
+
+```bash
+docker compose stop delivery-service
+```
+
+이 상태에서 위의 주문 명령을 다시 실행한다. 배송 서비스가 없어도 주문은 성공한다.
+
+배송 서비스를 다시 올린다.
+
+```bash
+docker compose start delivery-service
+```
+
+잠시 뒤 로그를 보면, 내려가 있던 동안 쌓인 이벤트를 이어서 처리한 것을 볼 수 있다.
+
+```bash
+docker compose logs delivery-service | grep 배송
+```
+
+주의: 배송 서비스는 데이터를 메모리에 저장한다. `stop`과 `start`로 재시작하면 이전 배송 목록은 사라지고, Kafka에서 아직 읽지 않은 이벤트만 새로 처리된다.
+
+### 정리
+
+```bash
+docker compose down
+```
+
+### PC에서 직접 실행하기
+
+Kafka만 Docker로 띄우고 서비스는 Gradle로 실행할 수도 있다.
+
+```bash
+docker compose up -d kafka
+```
+
+```bash
+./gradlew :order-service:bootRun
+```
+
+```bash
+./gradlew :delivery-service:bootRun
+```
+
+주문 ID는 UUID다. 주문 요청의 응답 헤더 `Location`에 나온 주소로 조회한다.
 
 ## 업무 규칙
 

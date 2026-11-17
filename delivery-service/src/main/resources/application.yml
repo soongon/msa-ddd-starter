@@ -1,0 +1,13 @@
+server:
+  port: 8082
+
+spring:
+  application:
+    name: delivery-service
+  kafka:
+    # 환경 변수 SPRING_KAFKA_BOOTSTRAP_SERVERS로 바꿀 수 있다.
+    bootstrap-servers: localhost:9092
+    consumer:
+      group-id: delivery-service
+      # 처음 붙을 때는 토픽의 맨 앞부터 읽는다. 그 뒤로는 마지막으로 읽은 위치부터 이어서 읽는다.
+      auto-offset-reset: earliest
