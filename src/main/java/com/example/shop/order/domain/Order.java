@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import com.example.shop.order.domain.policy.DiscountPolicy;
+import com.example.shop.order.domain.policy.ShippingFeePolicy;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Embedded;
@@ -17,8 +19,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OrderColumn;
 import jakarta.persistence.Table;
 
-// step2: 주문 애그리거트의 루트다. 주문 항목(OrderLine)은 이 객체를 통해서만 접근한다.
-// 금액 계산도 여기로 들어왔지만 아직 if 문으로 되어 있다. step3에서 정책 객체로 분리한다.
+// step3: 할인과 배송비 계산의 if 문이 사라졌다. 정책 객체(DiscountPolicy, ShippingFeePolicy)가 맡는다.
 @Entity
 @Table(name = "orders")
 public class Order {
@@ -55,31 +56,16 @@ public class Order {
 	}
 
 	// 팩토리: 주문은 반드시 이 메서드로 만든다. 만들어진 주문은 처음부터 규칙을 만족한다.
-	public static Order place(Long memberId, boolean vip, List<OrderLine> lines, ShippingAddress shippingAddress) {
+	// 할인과 배송비를 어떻게 계산하는지는 정책 객체가 안다. 주문은 정책에게 묻기만 한다.
+	public static Order place(Long memberId, List<OrderLine> lines, ShippingAddress shippingAddress,
+			DiscountPolicy discountPolicy, ShippingFeePolicy shippingFeePolicy) {
 		if (lines == null || lines.isEmpty()) {
 			throw new IllegalArgumentException("주문 항목은 하나 이상이어야 한다");
 		}
 		Order order = new Order(memberId, lines, shippingAddress);
-		order.discountAmount = order.calculateDiscount(vip);
-		order.shippingFee = order.calculateShippingFee(vip);
+		order.discountAmount = discountPolicy.calculateDiscount(order.totalAmount());
+		order.shippingFee = shippingFeePolicy.calculateFee(order.totalAmount());
 		return order;
-	}
-
-	private Money calculateDiscount(boolean vip) {
-		Money total = totalAmount();
-		if (vip) {
-			return total.percent(10); // VIP 10% 할인
-		} else if (total.isGreaterThanOrEqual(new Money(100_000))) {
-			return new Money(5_000); // 10만 원 이상 5천 원 할인
-		}
-		return Money.ZERO;
-	}
-
-	private Money calculateShippingFee(boolean vip) {
-		if (totalAmount().isGreaterThanOrEqual(new Money(50_000)) || vip) {
-			return Money.ZERO; // 무료 배송
-		}
-		return new Money(3_000);
 	}
 
 	// 불변식: 주문 금액은 항상 항목 금액의 합이다. 저장하지 않고 계산하므로 어긋날 수 없다.

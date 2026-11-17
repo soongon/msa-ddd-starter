@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.List;
 
+import com.example.shop.order.domain.policy.OrderPolicies;
 import org.junit.jupiter.api.Test;
 
 // 애그리거트의 규칙은 스프링도 DB도 없이 검증한다.
@@ -12,21 +13,21 @@ class OrderTest {
 
 	@Test
 	void 주문_항목이_없으면_주문을_만들_수_없다() {
-		assertThatThrownBy(() -> Order.place(1L, false, List.of(), address()))
+		assertThatThrownBy(() -> Order.place(1L, List.of(), address(),
+				OrderPolicies.discountPolicyFor(false), OrderPolicies.shippingFeePolicyFor(false)))
 				.isInstanceOf(IllegalArgumentException.class);
 	}
 
 	@Test
 	void 주문_금액은_항목_금액의_합이다() {
-		Order order = Order.place(1L, false,
-				List.of(line(10_000, 2), line(5_000, 1)), address());
+		Order order = place(false, line(10_000, 2), line(5_000, 1));
 
 		assertThat(order.totalAmount()).isEqualTo(new Money(25_000));
 	}
 
 	@Test
 	void 결제_금액은_주문_금액에서_할인을_빼고_배송비를_더한_값이다() {
-		Order order = Order.place(1L, false, List.of(line(10_000, 3)), address());
+		Order order = place(false, line(10_000, 3));
 
 		assertThat(order.getDiscountAmount()).isEqualTo(Money.ZERO);
 		assertThat(order.getShippingFee()).isEqualTo(new Money(3_000));
@@ -35,7 +36,7 @@ class OrderTest {
 
 	@Test
 	void VIP_주문은_10퍼센트_할인과_무료_배송을_받는다() {
-		Order order = Order.place(1L, true, List.of(line(10_000, 3)), address());
+		Order order = place(true, line(10_000, 3));
 
 		assertThat(order.getDiscountAmount()).isEqualTo(new Money(3_000));
 		assertThat(order.getShippingFee()).isEqualTo(Money.ZERO);
@@ -83,7 +84,12 @@ class OrderTest {
 	}
 
 	private Order order() {
-		return Order.place(1L, false, List.of(line(10_000, 3)), address());
+		return place(false, line(10_000, 3));
+	}
+
+	private Order place(boolean vip, OrderLine... lines) {
+		return Order.place(1L, List.of(lines), address(),
+				OrderPolicies.discountPolicyFor(vip), OrderPolicies.shippingFeePolicyFor(vip));
 	}
 
 	private OrderLine line(long price, int quantity) {

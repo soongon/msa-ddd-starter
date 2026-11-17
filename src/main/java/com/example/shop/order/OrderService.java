@@ -9,11 +9,11 @@ import com.example.shop.order.domain.Order;
 import com.example.shop.order.domain.OrderLine;
 import com.example.shop.order.domain.OrderRepository;
 import com.example.shop.order.domain.ShippingAddress;
+import com.example.shop.order.domain.policy.OrderPolicies;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-// step2: 응용 서비스에는 업무 규칙이 거의 남지 않았다. 객체를 꺼내고, 일을 시키고, 저장한다.
-// 남은 문제: 무료 배송 조건이 Order와 previewShippingFee 두 곳에 있다. step3에서 해결한다.
+// step3: 주문할 때와 배송비를 미리 볼 때 같은 정책 객체를 쓴다. 무료 배송 기준은 한 곳에만 있다.
 @Service
 @Transactional
 public class OrderService {
@@ -36,7 +36,9 @@ public class OrderService {
 		ShippingAddress address = new ShippingAddress(
 				request.receiverName(), request.zipCode(), request.address1(), request.address2());
 
-		Order order = Order.place(member.getId(), isVip(member), lines, address);
+		boolean vip = isVip(member);
+		Order order = Order.place(member.getId(), lines, address,
+				OrderPolicies.discountPolicyFor(vip), OrderPolicies.shippingFeePolicyFor(vip));
 		return orderRepository.save(order).getId();
 	}
 
@@ -44,10 +46,9 @@ public class OrderService {
 	@Transactional(readOnly = true)
 	public long previewShippingFee(Long memberId, long totalAmount) {
 		Member member = findMember(memberId);
-		if (totalAmount >= 50_000 || isVip(member)) {
-			return 0;
-		}
-		return 3_000;
+		return OrderPolicies.shippingFeePolicyFor(isVip(member))
+				.calculateFee(new Money(totalAmount))
+				.amount();
 	}
 
 	public void pay(Long orderId) {
