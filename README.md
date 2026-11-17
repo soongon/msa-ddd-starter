@@ -48,6 +48,8 @@ curl -i -X POST localhost:8080/orders -H 'Content-Type: application/json' -d '{"
 curl localhost:8080/orders/1
 ```
 
+step4부터는 주문 ID가 숫자가 아니라 UUID다. 주문 요청의 응답 헤더 `Location`에 나온 주소로 조회한다.
+
 ## 업무 규칙
 
 모든 브랜치가 같은 규칙을 구현한다. 구조만 달라진다.

@@ -1,4 +1,4 @@
-package com.example.shop.order;
+package com.example.shop.order.adapter.in.web;
 
 import java.util.List;
 

@@ -1,7 +1,8 @@
-package com.example.shop.order;
+package com.example.shop.order.application.port.in;
 
-public record OrderResponse(
-		Long id,
+// 조회 결과. 도메인 객체를 그대로 밖으로 내보내지 않는다.
+public record OrderView(
+		String id,
 		Long memberId,
 		String status,
 		long totalAmount,

@@ -1,4 +1,4 @@
-package com.example.shop.order.infra;
+package com.example.shop.order.adapter.out.persistence;
 
 import com.example.shop.order.domain.Money;
 import jakarta.persistence.AttributeConverter;

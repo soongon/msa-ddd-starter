@@ -1,5 +1,6 @@
 package com.example.shop.order.domain;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -12,21 +13,20 @@ import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OrderColumn;
 import jakarta.persistence.Table;
+import org.springframework.data.domain.AbstractAggregateRoot;
 
-// step3: 할인과 배송비 계산의 if 문이 사라졌다. 정책 객체(DiscountPolicy, ShippingFeePolicy)가 맡는다.
+// step4: 주문이 만들어질 때 OrderPlaced 이벤트를 등록한다.
+// AbstractAggregateRoot는 등록된 이벤트를 리포지토리 save() 시점에 발행해 준다.
 @Entity
 @Table(name = "orders")
-public class Order {
+public class Order extends AbstractAggregateRoot<Order> {
 
 	@Id
-	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	private Long id;
+	private String id;
 
 	// 회원은 다른 애그리거트이므로 객체가 아니라 ID로 참조한다.
 	private Long memberId;
@@ -48,23 +48,32 @@ public class Order {
 	protected Order() {
 	}
 
-	private Order(Long memberId, List<OrderLine> lines, ShippingAddress shippingAddress) {
+	private Order(OrderId id, Long memberId, List<OrderLine> lines, ShippingAddress shippingAddress) {
+		this.id = id.value();
 		this.memberId = memberId;
 		this.status = OrderStatus.PAYMENT_WAITING;
 		this.lines.addAll(lines);
 		this.shippingAddress = shippingAddress;
 	}
 
-	// 팩토리: 주문은 반드시 이 메서드로 만든다. 만들어진 주문은 처음부터 규칙을 만족한다.
-	// 할인과 배송비를 어떻게 계산하는지는 정책 객체가 안다. 주문은 정책에게 묻기만 한다.
-	public static Order place(Long memberId, List<OrderLine> lines, ShippingAddress shippingAddress,
+	// 팩토리: 주문은 반드시 이 메서드로 만든다.
+	public static Order place(OrderId id, Long memberId, List<OrderLine> lines, ShippingAddress shippingAddress,
 			DiscountPolicy discountPolicy, ShippingFeePolicy shippingFeePolicy) {
 		if (lines == null || lines.isEmpty()) {
 			throw new IllegalArgumentException("주문 항목은 하나 이상이어야 한다");
 		}
-		Order order = new Order(memberId, lines, shippingAddress);
+		Order order = new Order(id, memberId, lines, shippingAddress);
 		order.discountAmount = discountPolicy.calculateDiscount(order.totalAmount());
 		order.shippingFee = shippingFeePolicy.calculateFee(order.totalAmount());
+		order.registerEvent(new OrderPlaced(
+				id.value(),
+				memberId,
+				order.totalAmount().amount(),
+				shippingAddress.receiverName(),
+				shippingAddress.zipCode(),
+				shippingAddress.address1(),
+				shippingAddress.address2(),
+				Instant.now()));
 		return order;
 	}
 
@@ -107,8 +116,8 @@ public class Order {
 		this.shippingAddress = newAddress;
 	}
 
-	public Long getId() {
-		return id;
+	public OrderId getId() {
+		return new OrderId(id);
 	}
 
 	public Long getMemberId() {
@@ -134,5 +143,10 @@ public class Order {
 
 	public ShippingAddress getShippingAddress() {
 		return shippingAddress;
+	}
+
+	// 테스트에서 등록된 이벤트를 확인할 때 쓴다.
+	public List<Object> pendingEvents() {
+		return List.copyOf(domainEvents());
 	}
 }

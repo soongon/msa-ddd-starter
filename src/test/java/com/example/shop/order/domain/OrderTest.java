@@ -13,9 +13,20 @@ class OrderTest {
 
 	@Test
 	void 주문_항목이_없으면_주문을_만들_수_없다() {
-		assertThatThrownBy(() -> Order.place(1L, List.of(), address(),
+		assertThatThrownBy(() -> Order.place(OrderId.newId(), 1L, List.of(), address(),
 				OrderPolicies.discountPolicyFor(false), OrderPolicies.shippingFeePolicyFor(false)))
 				.isInstanceOf(IllegalArgumentException.class);
+	}
+
+	@Test
+	void 주문을_만들면_주문_접수_이벤트가_등록된다() {
+		Order order = place(false, line(10_000, 3));
+
+		assertThat(order.pendingEvents()).hasSize(1);
+		OrderPlaced event = (OrderPlaced) order.pendingEvents().get(0);
+		assertThat(event.orderId()).isEqualTo(order.getId().value());
+		assertThat(event.totalAmount()).isEqualTo(30_000);
+		assertThat(event.receiverName()).isEqualTo("홍길동");
 	}
 
 	@Test
@@ -88,7 +99,7 @@ class OrderTest {
 	}
 
 	private Order place(boolean vip, OrderLine... lines) {
-		return Order.place(1L, List.of(lines), address(),
+		return Order.place(OrderId.newId(), 1L, List.of(lines), address(),
 				OrderPolicies.discountPolicyFor(vip), OrderPolicies.shippingFeePolicyFor(vip));
 	}
 
