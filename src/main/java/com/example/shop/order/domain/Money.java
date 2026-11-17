@@ -1,4 +1,4 @@
-package com.example.shop.order;
+package com.example.shop.order.domain;
 
 // 값 객체: 금액. 불변이고, 생성할 때 스스로 유효성을 검사한다.
 public record Money(long amount) {

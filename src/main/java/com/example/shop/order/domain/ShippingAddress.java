@@ -1,4 +1,4 @@
-package com.example.shop.order;
+package com.example.shop.order.domain;
 
 import jakarta.persistence.Embeddable;
 

@@ -1,4 +1,4 @@
-package com.example.shop.order;
+package com.example.shop.order.domain;
 
 public enum OrderStatus {
 	PAYMENT_WAITING,
