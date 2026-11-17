@@ -16,8 +16,26 @@ public class OrderItem {
 	private Long orderId;
 	private Long productId;
 	private String productName;
-	private long price;
+	private Money price;
 	private int quantity;
+
+	protected OrderItem() {
+	}
+
+	public OrderItem(Long orderId, Long productId, String productName, Money price, int quantity) {
+		if (quantity <= 0) {
+			throw new IllegalArgumentException("수량은 1 이상이어야 한다");
+		}
+		this.orderId = orderId;
+		this.productId = productId;
+		this.productName = productName;
+		this.price = price;
+		this.quantity = quantity;
+	}
+
+	public Money amount() {
+		return price.multiply(quantity);
+	}
 
 	public Long getId() {
 		return id;
@@ -27,39 +45,19 @@ public class OrderItem {
 		return orderId;
 	}
 
-	public void setOrderId(Long orderId) {
-		this.orderId = orderId;
-	}
-
 	public Long getProductId() {
 		return productId;
-	}
-
-	public void setProductId(Long productId) {
-		this.productId = productId;
 	}
 
 	public String getProductName() {
 		return productName;
 	}
 
-	public void setProductName(String productName) {
-		this.productName = productName;
-	}
-
-	public long getPrice() {
+	public Money getPrice() {
 		return price;
-	}
-
-	public void setPrice(long price) {
-		this.price = price;
 	}
 
 	public int getQuantity() {
 		return quantity;
-	}
-
-	public void setQuantity(int quantity) {
-		this.quantity = quantity;
 	}
 }
